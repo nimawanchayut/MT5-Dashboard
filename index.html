@@ -735,8 +735,8 @@ function calcPortStats(port) {
   };
 }
 
-// MT5 server ช้ากว่าไทย 4 ชม — ใช้ค่านี้ทุกที่ที่ filter ด้วย d.time
-const MT5_SERVER_OFFSET_MS = 4 * 3600000;
+// MT5 DEAL_TIME คือ UTC+0 เสมอ, ไทย = UTC+7 → offset = 7 ชม
+const MT5_SERVER_OFFSET_MS = 7 * 3600000;
 
 // Velocity — profit in last N ms
 function calcVelocity(ms) {
