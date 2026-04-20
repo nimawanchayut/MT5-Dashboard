@@ -271,8 +271,14 @@
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.8rem;
     outline: none; transition: border-color 0.2s;
+    color-scheme: dark;
   }
   .date-input:focus { border-color: var(--neon-cyan); }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.5);
+    cursor: pointer;
+    opacity: 0.8;
+  }
 
   /* Progress bar */
   .progress-bar-wrap {
@@ -514,6 +520,7 @@
         <div class="flex gap-2">
           <button onclick="setRange('today')" class="copy-link-btn text-xs">Today</button>
           <button onclick="setRange('yday')" class="copy-link-btn text-xs">Yday</button>
+          <button onclick="setRange('week')" class="copy-link-btn text-xs">Week</button>
           <button onclick="setRange('7d')" class="copy-link-btn text-xs">7D</button>
           <button onclick="setRange('30d')" class="copy-link-btn text-xs">30D</button>
           <button onclick="setRange('all')" class="copy-link-btn text-xs">All</button>
@@ -846,11 +853,11 @@ function renderAccordion() {
           </div>
           <div>
             <div class="card-label">Max DD (USD)</div>
-            <div class="mono text-sm" style="color:${(stats.maxDD||0)<5?'var(--neon-green)':(stats.maxDD||0)<15?'var(--neon-yellow)':(stats.maxDD||0)<25?'var(--neon-orange)':'var(--neon-red)'}">-${fmt((stats.equity||0)*(stats.maxDD||0)/100)}</div>
+            <div class="mono text-sm" style="color:var(--neon-red)">-${fmt((stats.equity||0)*(stats.maxDD||0)/100)}</div>
           </div>
           <div>
             <div class="card-label">Max DD %</div>
-            <div class="mono text-sm" style="color:${(stats.maxDD||0)<5?'var(--neon-green)':(stats.maxDD||0)<15?'var(--neon-yellow)':(stats.maxDD||0)<25?'var(--neon-orange)':'var(--neon-red)'}">${fmtPct(stats.maxDD||0)}</div>
+            <div class="mono text-sm" style="color:var(--neon-red)">${fmtPct(stats.maxDD||0)}</div>
           </div>
         </div>
         <!-- Copy Link -->
@@ -1030,9 +1037,7 @@ function filterGrid() {
     const growthColor = p.growth >= 20 ? '#00ff88' : p.growth >= 5 ? '#7dffb8' : p.growth >= 0 ? '#b0ffd6' : p.growth >= -10 ? '#ff8866' : '#ff3366';
     // Win Rate — orange เสมอ
     const wrCol = `style="color:var(--neon-orange)"`;
-    // Max DD % color scale
-    const ddColor = p.maxdd < 5 ? 'var(--neon-green)' : p.maxdd < 15 ? 'var(--neon-yellow)' : p.maxdd < 25 ? 'var(--neon-orange)' : 'var(--neon-red)';
-    // Max DD (USD) = equity × maxDD% แบบติดลบ ใช้สีเดียวกับ %
+    // Max DD — แดงเสมอ
     const maxddUsd = -(p.equity * (p.maxdd / 100));
     const tradesCol = `style="color:var(--neon-purple)"`;
 
@@ -1048,8 +1053,8 @@ function filterGrid() {
       <td ${profitCol}>${profitSign+fmt(p.profit)}</td>
       <td style="color:${growthColor}">${fmtPct(p.growth)}</td>
       <td ${wrCol}>${fmtPct(p.winrate)}</td>
-      <td style="color:${ddColor}">${'-'+fmt(Math.abs(maxddUsd))}</td>
-      <td style="color:${ddColor}">${fmtPct(p.maxdd)}</td>
+      <td style="color:var(--neon-red)">${'-'+fmt(Math.abs(maxddUsd))}</td>
+      <td style="color:var(--neon-red)">${fmtPct(p.maxdd)}</td>
       <td ${tradesCol}>${p.trades}</td>
       <td>
         <button class="copy-link-btn text-xs" onclick="copyLink('${p.id}')">🔗</button>
@@ -1102,6 +1107,12 @@ function setRange(r) {
     const yd = toInputDate(new Date(now-86400000));
     document.getElementById('date-from').value = yd;
     document.getElementById('date-to').value = yd;
+  } else if(r==='week') {
+    const day = now.getDay(); // 0=อาทิตย์ 6=เสาร์
+    const sunday = new Date(now); sunday.setDate(now.getDate() - day);
+    const saturday = new Date(sunday); saturday.setDate(sunday.getDate() + 6);
+    document.getElementById('date-from').value = toInputDate(sunday);
+    document.getElementById('date-to').value = toInputDate(saturday);
   } else if(r==='7d') {
     document.getElementById('date-from').value = toInputDate(new Date(now-7*86400000));
     document.getElementById('date-to').value = toDate;
