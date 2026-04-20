@@ -735,9 +735,8 @@ function calcPortStats(port) {
   };
 }
 
-// MT5 server = UTC+3, ไทย = UTC+7 → ต่างกัน 4 ชม
-// DEAL_TIME ของ ICMarkets ส่งเป็น server time (UTC+3) ไม่ใช่ UTC+0
-const MT5_SERVER_OFFSET_MS = 4 * 3600000;
+// ยืนยันแล้วจาก console: DEAL_TIME เป็น UTC+0, ไทย = UTC+7 → offset = 7 ชม
+const MT5_SERVER_OFFSET_MS = 7 * 3600000;
 
 // Velocity — profit in last N ms
 function calcVelocity(ms) {
@@ -1075,8 +1074,8 @@ function filterGrid() {
   const from = document.getElementById('date-from').value;
   const to = document.getElementById('date-to').value;
   const search = document.getElementById('grid-search').value.toLowerCase();
-  const fromMs = from ? ((parseLocalDate(from) ?? 0) - MT5_SERVER_OFFSET_MS) : 0;
-  const toMs   = to   ? ((parseLocalDate(to) ?? Date.now()) + 86399999 - MT5_SERVER_OFFSET_MS) : Date.now();
+  const fromMs = from ? (parseLocalDate(from) ?? 0) : 0;
+  const toMs   = to   ? ((parseLocalDate(to) ?? Date.now()) + 86399999) : Date.now();
 
   let rows = gridData.filter(p => {
     if(search && !p.name.toLowerCase().includes(search) && !p.id.toLowerCase().includes(search)) return false;
@@ -1087,7 +1086,9 @@ function filterGrid() {
       let profit=0, wins=0, trades=0, grossW=0, grossL=0;
       p.deals.forEach(d => {
         if(d.type==='DEAL_TYPE_BALANCE') return;
-        if(d.time < fromMs || d.time > toMs) return;
+        // แปลง UTC timestamp → local time ก่อนเปรียบเทียบกับวันที่ที่เลือก
+        const localTime = d.time + MT5_SERVER_OFFSET_MS;
+        if(localTime < fromMs || localTime > toMs) return;
         const tp=(d.profit||0)+(d.swap||0)+(d.commission||0);
         profit+=tp; trades++;
         if(tp>0){wins++;grossW+=tp;}else{grossL+=Math.abs(tp);}
