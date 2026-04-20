@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MT5 Portfolio Command Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void: #030508;
+    --bg-panel: #070c14;
+    --bg-card: #0a1220;
+    --bg-card2: #0d1828;
+    --border-dim: #1a2a40;
+    --border-glow: #00d4ff;
+    --neon-cyan: #00d4ff;
+    --neon-green: #00ff88;
+    --neon-yellow: #ffdd00;
+    --neon-red: #ff3366;
+    --neon-purple: #bf5fff;
+    --neon-orange: #ff8c00;
+    --text-primary: #e0f0ff;
+    --text-secondary: #6a90b8;
+    --text-dim: #2a4a6a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(0,212,255,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 80% 80%, rgba(0,255,136,0.03) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,212,255,0.03) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,212,255,0.02) 40px);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-void); }
+  ::-webkit-scrollbar-thumb { background: #1a3a5c; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--neon-cyan); }
+
+  /* Header */
+  .hdr {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(3,5,8,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-dim);
+    box-shadow: 0 0 40px rgba(0,212,255,0.08);
+  }
+  .logo-text {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-green) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--neon-green);
+    box-shadow: 0 0 10px var(--neon-green);
+    animation: pulse-dot 1.5s ease infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+  .mono { font-family: 'Share Tech Mono', monospace; }
+
+  /* Panels */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    opacity: 0.5;
+  }
+
+  /* Neon Cards */
+  .neon-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 1.2rem;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .neon-card:hover {
+    border-color: rgba(0,212,255,0.3);
+    box-shadow: 0 0 20px rgba(0,212,255,0.07);
+  }
+  .card-label {
+    font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-secondary); margin-bottom: 0.4rem;
+  }
+  .card-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.6rem; font-weight: 700;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+  }
+  .card-value.green { color: var(--neon-green); text-shadow: 0 0 20px rgba(0,255,136,0.5); }
+  .card-value.red { color: var(--neon-red); text-shadow: 0 0 20px rgba(255,51,102,0.5); }
+  .card-value.yellow { color: var(--neon-yellow); text-shadow: 0 0 20px rgba(255,221,0,0.5); }
+
+  /* Section Title */
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--neon-cyan); opacity: 0.8;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(0,212,255,0.3), transparent);
+  }
+
+  /* Velocity Cards */
+  .vel-card {
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0,212,255,0.03) 100%);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 10px; padding: 1.4rem;
+    position: relative; overflow: hidden;
+  }
+  .vel-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    animation: scan 3s linear infinite;
+  }
+  @keyframes scan {
+    0% { transform: scaleX(0) translateX(-100%); }
+    50% { transform: scaleX(1) translateX(0); }
+    100% { transform: scaleX(0) translateX(100%); }
+  }
+  .vel-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 2rem; font-weight: 700;
+    transition: all 0.4s;
+  }
+  .vel-value.positive { color: var(--neon-green); text-shadow: 0 0 30px rgba(0,255,136,0.6); }
+  .vel-value.negative { color: var(--neon-red); text-shadow: 0 0 30px rgba(255,51,102,0.6); }
+  .flash-update {
+    animation: flash 0.5s ease;
+  }
+  @keyframes flash {
+    0% { opacity: 1; }
+    25% { opacity: 0.2; }
+    75% { opacity: 1; }
+    100% { opacity: 1; }
+  }
+
+  /* Accordion */
+  .acc-item {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .acc-item.active { border-color: rgba(0,212,255,0.3); }
+  .acc-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 1rem 1.2rem; cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+  }
+  .acc-header:hover { background: rgba(0,212,255,0.04); }
+  .acc-arrow {
+    width: 20px; height: 20px;
+    color: var(--neon-cyan); opacity: 0.6;
+    transition: transform 0.3s, opacity 0.3s;
+    flex-shrink: 0;
+  }
+  .acc-item.active .acc-arrow { transform: rotate(90deg); opacity: 1; }
+  .acc-body { display: none; padding: 0 1.2rem 1.2rem; }
+  .acc-item.active .acc-body { display: block; }
+  .port-id-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; padding: 2px 8px;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 4px; color: var(--neon-cyan);
+  }
+  .status-badge {
+    font-size: 0.65rem; letter-spacing: 1px; padding: 2px 8px;
+    border-radius: 20px; font-family: 'Share Tech Mono', monospace;
+  }
+  .status-live { background: rgba(0,255,136,0.1); color: var(--neon-green); border: 1px solid rgba(0,255,136,0.3); }
+  .status-idle { background: rgba(255,221,0,0.1); color: var(--neon-yellow); border: 1px solid rgba(255,221,0,0.3); }
+  .status-error { background: rgba(255,51,102,0.1); color: var(--neon-red); border: 1px solid rgba(255,51,102,0.3); }
+
+  /* Chart container fix — z-index */
+  .chart-wrap {
+    position: relative; z-index: 1;
+    border-radius: 8px; overflow: hidden;
+  }
+  .copy-link-btn {
+    position: relative; z-index: 10;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 1px;
+    padding: 6px 14px;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.4);
+    border-radius: 4px; color: var(--neon-cyan);
+    cursor: pointer; transition: all 0.2s;
+    pointer-events: all !important;
+  }
+  .copy-link-btn:hover {
+    background: rgba(0,212,255,0.2);
+    box-shadow: 0 0 15px rgba(0,212,255,0.3);
+  }
+
+  /* Data Grid */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table thead tr {
+    border-bottom: 1px solid var(--border-dim);
+  }
+  .data-table th {
+    font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-secondary); padding: 10px 12px;
+    text-align: right; cursor: pointer;
+    white-space: nowrap; user-select: none;
+    transition: color 0.2s;
+  }
+  .data-table th:first-child { text-align: left; }
+  .data-table th:hover { color: var(--neon-cyan); }
+  .data-table th.sort-asc::after { content: ' ▲'; color: var(--neon-cyan); }
+  .data-table th.sort-desc::after { content: ' ▼'; color: var(--neon-cyan); }
+  .data-table tbody tr {
+    border-bottom: 1px solid rgba(26,42,64,0.5);
+    transition: background 0.15s;
+  }
+  .data-table tbody tr:hover { background: rgba(0,212,255,0.04); }
+  .data-table td {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem; padding: 10px 12px;
+    text-align: right; color: var(--text-primary);
+  }
+  .data-table td:first-child { text-align: left; }
+  .val-pos { color: var(--neon-green); }
+  .val-neg { color: var(--neon-red); }
+  .val-neu { color: var(--text-secondary); }
+
+  /* Date picker */
+  .date-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px; padding: 6px 12px;
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .date-input:focus { border-color: var(--neon-cyan); }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    height: 4px; background: var(--border-dim);
+    border-radius: 2px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* Sparkline badge */
+  .perf-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.7rem; padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .perf-pos { background: rgba(0,255,136,0.12); color: var(--neon-green); }
+  .perf-neg { background: rgba(255,51,102,0.12); color: var(--neon-red); }
+
+  /* Loading */
+  .loader {
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px; padding: 3rem;
+  }
+  .loader-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--neon-cyan); opacity: 0.3;
+    animation: loader-blink 1.2s ease infinite;
+  }
+  .loader-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loader-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes loader-blink {
+    0%,100% { opacity: 0.2; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px var(--neon-cyan); }
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.8rem;
+    padding: 10px 20px;
+    background: rgba(0,212,255,0.15);
+    border: 1px solid rgba(0,212,255,0.4);
+    border-radius: 6px; color: var(--neon-cyan);
+    backdrop-filter: blur(10px);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.3s;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  /* DD bar color */
+  .dd-bar { background: linear-gradient(90deg, var(--neon-red), #ff6600); }
+  .growth-bar { background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green)); }
+
+  /* Responsive tweaks */
+  @media (max-width: 768px) {
+    .card-value { font-size: 1.2rem; }
+    .vel-value { font-size: 1.4rem; }
+  }
+
+  /* Glow line decorator */
+  .glow-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-green), transparent);
+    opacity: 0.3;
+  }
+
+  /* FIREBASE CONFIG NOTICE */
+  .config-notice {
+    background: rgba(255,221,0,0.08);
+    border: 1px solid rgba(255,221,0,0.3);
+    border-radius: 8px; padding: 1rem 1.4rem;
+    font-size: 0.8rem; color: var(--neon-yellow);
+    font-family: 'Share Tech Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr px-6 py-3">
+  <div class="flex items-center justify-between max-w-screen-2xl mx-auto">
+    <div class="flex items-center gap-4">
+      <div class="live-dot"></div>
+      <h1 class="logo-text text-xl tracking-widest">MT5 COMMAND CENTER</h1>
+      <span class="mono text-xs text-gray-600">v2.0</span>
+    </div>
+    <div class="flex items-center gap-6">
+      <div class="text-right">
+        <div class="text-xs text-gray-600 uppercase tracking-widest">Last Sync</div>
+        <div id="last-sync" class="mono text-xs" style="color:var(--neon-green)">—</div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs text-gray-600 uppercase tracking-widest">Server Time</div>
+        <div id="clock" class="mono text-xs" style="color:var(--neon-cyan)">—</div>
+      </div>
+      <button onclick="refreshAll()" class="copy-link-btn">↺ REFRESH</button>
+    </div>
+  </div>
+</header>
+
+<!-- FIREBASE CONFIG NOTICE (remove after setting up) -->
+<div id="config-notice" class="max-w-screen-2xl mx-auto px-6 pt-4">
+  <div class="config-notice">
+    ⚠ <strong>SETUP REQUIRED:</strong> แก้ไข <code>FIREBASE_CONFIG</code> ด้านล่างในไฟล์ index.html บรรทัด JS และตั้งค่า <code>DATABASE_URL</code> ของ Firebase Realtime Database ก่อนใช้งาน
+  </div>
+</div>
+
+<main class="max-w-screen-2xl mx-auto px-6 py-6 space-y-8" style="position:relative;z-index:1">
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 1: PORTFOLIO GRAND OVERVIEW
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-title mb-4">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      PORTFOLIO GRAND OVERVIEW
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div class="neon-card col-span-2 md:col-span-1">
+        <div class="card-label">Total Equity</div>
+        <div id="ov-equity" class="card-value">—</div>
+        <div class="text-xs mt-1" style="color:var(--text-secondary)">USD across all ports</div>
+      </div>
+      <div class="neon-card">
+        <div class="card-label">Total Balance</div>
+        <div id="ov-balance" class="card-value">—</div>
+      </div>
+      <div class="neon-card">
+        <div class="card-label">Net Deposit</div>
+        <div id="ov-netdeposit" class="card-value yellow">—</div>
+      </div>
+      <div class="neon-card">
+        <div class="card-label">Grand Total Profit</div>
+        <div id="ov-profit" class="card-value green">—</div>
+        <div id="ov-profit-badge" class="perf-badge mt-1">—</div>
+      </div>
+      <div class="neon-card">
+        <div class="card-label">Overall Growth %</div>
+        <div id="ov-growth" class="card-value green">—</div>
+        <div class="progress-bar-wrap mt-2">
+          <div id="ov-growth-bar" class="progress-bar-fill growth-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="neon-card">
+        <div class="card-label">Overall Max DD %</div>
+        <div id="ov-maxdd" class="card-value red">—</div>
+        <div class="progress-bar-wrap mt-2">
+          <div id="ov-dd-bar" class="progress-bar-fill dd-bar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="glow-line"></div>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 2: VELOCITY & MOMENTUM
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-title mb-4">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+      VELOCITY & MOMENTUM — REAL-TIME CLOSED TRADES
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="vel-card" style="--scan-color:var(--neon-cyan)">
+        <div class="card-label mb-2">⚡ Last 1 Hour Profit</div>
+        <div id="vel-1h" class="vel-value positive">$0.00</div>
+        <div class="mt-3 flex items-center gap-3">
+          <span class="text-xs" style="color:var(--text-secondary)">Trades closed:</span>
+          <span id="vel-1h-count" class="mono text-xs" style="color:var(--neon-cyan)">0</span>
+        </div>
+      </div>
+      <div class="vel-card">
+        <div class="card-label mb-2">📊 Last 6 Hours Profit</div>
+        <div id="vel-6h" class="vel-value positive">$0.00</div>
+        <div class="mt-3 flex items-center gap-3">
+          <span class="text-xs" style="color:var(--text-secondary)">Trades closed:</span>
+          <span id="vel-6h-count" class="mono text-xs" style="color:var(--neon-cyan)">0</span>
+        </div>
+      </div>
+      <div class="vel-card" style="--scan-color:var(--neon-green)">
+        <div class="card-label mb-2">🌟 Today's Total Profit</div>
+        <div id="vel-today" class="vel-value positive">$0.00</div>
+        <div class="mt-3 flex items-center gap-3">
+          <span class="text-xs" style="color:var(--text-secondary)">Trades closed:</span>
+          <span id="vel-today-count" class="mono text-xs" style="color:var(--neon-green)">0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="glow-line"></div>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 3: DEEP-DIVE PORTFOLIOS (ACCORDION)
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="flex items-center justify-between mb-4">
+      <div class="section-title" style="flex:1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        DEEP-DIVE PORTFOLIOS
+      </div>
+      <div class="flex gap-2 ml-4">
+        <button onclick="expandAll()" class="copy-link-btn text-xs">▼ EXPAND ALL</button>
+        <button onclick="collapseAll()" class="copy-link-btn text-xs">▲ COLLAPSE ALL</button>
+      </div>
+    </div>
+    <div id="accordion-container" class="space-y-2">
+      <div class="loader"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+    </div>
+  </section>
+
+  <div class="glow-line"></div>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 4: ADVANCED PERFORMANCE GRID
+  ════════════════════════════════════════════ -->
+  <section>
+    <div class="section-title mb-4">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      ADVANCED PERFORMANCE GRID
+    </div>
+    <!-- Date Range Picker -->
+    <div class="panel p-4 mb-4">
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-widest" style="color:var(--text-secondary)">From</span>
+          <input type="date" id="date-from" class="date-input" onchange="filterGrid()"/>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-widest" style="color:var(--text-secondary)">To</span>
+          <input type="date" id="date-to" class="date-input" onchange="filterGrid()"/>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="setRange('today')" class="copy-link-btn text-xs">Today</button>
+          <button onclick="setRange('yday')" class="copy-link-btn text-xs">Yday</button>
+          <button onclick="setRange('7d')" class="copy-link-btn text-xs">7D</button>
+          <button onclick="setRange('30d')" class="copy-link-btn text-xs">30D</button>
+          <button onclick="setRange('all')" class="copy-link-btn text-xs">All</button>
+        </div>
+      </div>
+      <div class="mt-3">
+        <input type="text" id="grid-search" placeholder="Search portfolio..." class="date-input" oninput="filterGrid()" style="width:220px"/>
+      </div>
+    </div>
+    <div class="panel overflow-x-auto">
+      <table class="data-table" id="perf-table">
+        <thead>
+          <tr>
+            <th onclick="sortGrid('name')" class="sort-asc">Portfolio</th>
+            <th onclick="sortGrid('equity')">Equity</th>
+            <th onclick="sortGrid('balance')">Balance</th>
+            <th onclick="sortGrid('netdeposit')">Net Deposit</th>
+            <th onclick="sortGrid('profit')">Profit (USD)</th>
+            <th onclick="sortGrid('growth')">Growth %</th>
+            <th onclick="sortGrid('winrate')">Win Rate</th>
+            <th onclick="sortGrid('maxdd')">Max DD (USD)</th>
+            <th onclick="sortGrid('maxdd')">Max DD %</th>
+            <th onclick="sortGrid('trades')">Trades</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="grid-body">
+          <tr><td colspan="11" class="text-center py-8" style="color:var(--text-secondary)">Loading data...</td></tr>
+
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- TOAST -->
+<div id="toast">✓ Copied to clipboard</div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT — FIREBASE + LOGIC + CHARTS
+══════════════════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════
+// 🔥 FIREBASE CONFIGURATION — FILL IN YOUR DETAILS
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDxRrMOGjRMpvK-Rzz66-u01nUy2BvT5Ys",
+  authDomain: "ai-affiliate-bot-488110.firebaseapp.com",
+  databaseURL: "https://ai-affiliate-bot-488110-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ai-affiliate-bot-488110",
+  storageBucket: "ai-affiliate-bot-488110.firebasestorage.app",
+  messagingSenderId: "381914640045",
+  appId: "1:381914640045:web:45ec915156a1a1e4f16024",
+  measurementId: "G-20JWKBL69K"
+};
+
+// ═══════════════════════════════════════════════
+// DATA PATH STRUCTURE IN FIREBASE:
+// /portfolios/{portId}/info    → { name, login, server, status }
+// /portfolios/{portId}/stats   → { equity, balance, netDeposit, maxDD, ... }
+// /portfolios/{portId}/deals   → [ {time, profit, swap, commission, type, ...} ]
+// /portfolios/{portId}/equity_curve → [ {time, equity} ]
+// /commands/{portId}           → { closeAll: true/false }
+// ═══════════════════════════════════════════════
+
+let db;
+let allPortfolios = {};
+let chartInstances = {};
+let gridData = [];
+let sortField = 'name', sortDir = 1;
+
+// ── Init Firebase
+function initFirebase() {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    console.log('[Firebase] Connected');
+    document.getElementById('config-notice').style.display = 'none';
+    startListeners();
+  } catch(e) {
+    console.warn('[Firebase] Not configured yet — using DEMO data');
+    loadDemoData();
+  }
+}
+
+// ── Real-time listeners
+function startListeners() {
+  db.ref('/portfolios').on('value', snap => {
+    const raw = snap.val() || {};
+    allPortfolios = raw;
+    renderAll();
+    updateLastSync();
+  });
+}
+
+// ═══════════════════════════════════════════════
+// DEMO DATA (remove when Firebase is configured)
+// ═══════════════════════════════════════════════
+function loadDemoData() {
+  const now = Date.now();
+  const ports = {};
+  const names = ['Port1_97039829','Port2_97041046','Port3_97041049','Port4_97042779','Port5_97043475',
+                  'Port6_97046166','Port7_97046354','Port8_97046548','Port9_97046627','Port10_97046636'];
+  names.forEach((name, i) => {
+    const id = name;
+    const netDep = 5000 + Math.random()*45000;
+    const profit = (Math.random()-0.2)*netDep*0.4;
+    const equity = netDep + profit + (Math.random()-0.5)*500;
+    const balance = equity - (Math.random()*200);
+    const trades = Math.floor(50 + Math.random()*500);
+    const wins = Math.floor(trades * (0.45+Math.random()*0.3));
+    // generate equity curve
+    let curve = [];
+    let eq = netDep;
+    for(let d=90; d>=0; d--) {
+      eq += (Math.random()-0.35)*netDep*0.01;
+      curve.push({ time: now - d*86400000, equity: Math.round(eq*100)/100 });
+    }
+    // generate recent deals
+    let deals = [];
+    for(let t=0; t<trades; t++) {
+      const dealTime = now - Math.floor(Math.random()*30)*86400000 - Math.floor(Math.random()*86400000);
+      const dp = (Math.random()-0.35)*200;
+      deals.push({
+        time: dealTime,
+        profit: Math.round(dp*100)/100,
+        swap: Math.round((Math.random()-0.5)*5*100)/100,
+        commission: -Math.round(Math.random()*3*100)/100,
+        type: 'TRADE'
+      });
+    }
+    // add balance deals
+    deals.push({ time: now - 90*86400000, profit: netDep, type: 'DEAL_TYPE_BALANCE' });
+
+    ports[id] = {
+      info: { name, login: `10${i+1}00${i+1}`, server: 'ICMarkets-Live01', status: Math.random()>0.2?'live':'idle' },
+      stats: {
+        equity: Math.round(equity*100)/100,
+        balance: Math.round(balance*100)/100,
+        maxDD: Math.round((5+Math.random()*25)*100)/100
+      },
+      deals,
+      equity_curve: curve
+    };
+  });
+  allPortfolios = ports;
+  renderAll();
+  updateLastSync();
+}
+
+// ═══════════════════════════════════════════════
+// MATH RULES (CRITICAL)
+// ═══════════════════════════════════════════════
+function calcPortStats(port) {
+  const deals = Object.values(port.deals || {});
+
+  // Net Deposit = sum all DEAL_TYPE_BALANCE
+  let netDeposit = 0;
+  deals.forEach(d => {
+    if(d.type === 'DEAL_TYPE_BALANCE') netDeposit += (d.profit || 0);
+  });
+
+  // Trade Profit = sum(DEAL_PROFIT + DEAL_SWAP + DEAL_COMMISSION) for trade deals
+  let totalProfit = 0, winCount = 0, tradeCount = 0;
+  let grossWin = 0, grossLoss = 0;
+  deals.forEach(d => {
+    if(d.type !== 'DEAL_TYPE_BALANCE') {
+      const tp = (d.profit||0) + (d.swap||0) + (d.commission||0);
+      totalProfit += tp;
+      tradeCount++;
+      if(tp > 0) { winCount++; grossWin += tp; }
+      else { grossLoss += Math.abs(tp); }
+    }
+  });
+
+  // Growth % — safe division
+  const growth = (netDeposit !== 0) ? (totalProfit / netDeposit) * 100 : 0;
+
+  // Win Rate
+  const winRate = (tradeCount > 0) ? (winCount / tradeCount) * 100 : 0;
+
+  // Profit Factor
+  const pf = (grossLoss > 0) ? grossWin / grossLoss : (grossWin > 0 ? 999 : 0);
+
+  return {
+    netDeposit: Math.round(netDeposit*100)/100,
+    totalProfit: Math.round(totalProfit*100)/100,
+    growth: Math.round(growth*100)/100,
+    winRate: Math.round(winRate*100)/100,
+    pf: Math.round(pf*100)/100,
+    tradeCount,
+    winCount
+  };
+}
+
+// Velocity — profit in last N ms
+function calcVelocity(ms) {
+  const cutoff = Date.now() - ms;
+  let profit = 0, count = 0;
+  Object.values(allPortfolios).forEach(port => {
+    Object.values(port.deals||{}).forEach(d => {
+      if(d.type !== 'DEAL_TYPE_BALANCE' && d.time >= cutoff) {
+        profit += (d.profit||0)+(d.swap||0)+(d.commission||0);
+        count++;
+      }
+    });
+  });
+  return { profit: Math.round(profit*100)/100, count };
+}
+
+function calcToday() {
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  return calcVelocity(Date.now() - midnight.getTime());
+}
+
+// ═══════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════
+function renderAll() {
+  renderOverview();
+  renderVelocity();
+  renderAccordion();
+  renderGrid();
+}
+
+// Section 1
+function renderOverview() {
+  let totalEquity=0, totalBalance=0, totalNetDep=0, totalProfit=0, maxDDs=[];
+  Object.values(allPortfolios).forEach(port => {
+    totalEquity += (port.stats?.equity||0);
+    totalBalance += (port.stats?.balance||0);
+    const s = calcPortStats(port);
+    totalNetDep += s.netDeposit;
+    totalProfit += s.totalProfit;
+    if(port.stats?.maxDD) maxDDs.push(port.stats.maxDD);
+  });
+  const growth = totalNetDep!==0 ? (totalProfit/totalNetDep)*100 : 0;
+  const avgDD = maxDDs.length ? maxDDs.reduce((a,b)=>a+b,0)/maxDDs.length : 0;
+
+  setText('ov-equity',   fmt(totalEquity));
+  setText('ov-balance',  fmt(totalBalance));
+  setText('ov-netdeposit', fmt(totalNetDep));
+  const pEl = document.getElementById('ov-profit');
+  pEl.textContent = fmt(totalProfit);
+  pEl.className = 'card-value ' + (totalProfit>=0?'green':'red');
+  const gEl = document.getElementById('ov-growth');
+  gEl.textContent = fmtPct(growth);
+  gEl.className = 'card-value ' + (growth>=0?'green':'red');
+  setText('ov-maxdd', fmtPct(avgDD));
+  // progress bars
+  setBar('ov-growth-bar', Math.min(Math.abs(growth), 100));
+  setBar('ov-dd-bar', Math.min(avgDD, 100));
+  // badge
+  const b = document.getElementById('ov-profit-badge');
+  b.className = 'perf-badge mt-1 ' + (totalProfit>=0?'perf-pos':'perf-neg');
+  b.textContent = (totalProfit>=0?'▲':'▼') + ' ' + fmtPct(growth) + ' growth';
+}
+
+// Section 2
+function renderVelocity() {
+  const v1h = calcVelocity(3600000);
+  const v6h = calcVelocity(21600000);
+  const vTd = calcToday();
+  setVel('vel-1h', v1h.profit); setText('vel-1h-count', v1h.count);
+  setVel('vel-6h', v6h.profit); setText('vel-6h-count', v6h.count);
+  setVel('vel-today', vTd.profit); setText('vel-today-count', vTd.count);
+}
+
+function setVel(id, val) {
+  const el = document.getElementById(id);
+  const prev = parseFloat(el.dataset.prev||0);
+  el.dataset.prev = val;
+  el.textContent = (val>=0?'+':'') + fmt(val);
+  el.className = 'vel-value ' + (val>=0?'positive':'negative');
+  if(val !== prev) el.classList.add('flash-update');
+  setTimeout(()=>el.classList.remove('flash-update'),600);
+}
+
+// Section 3 — Accordion
+function renderAccordion() {
+  const container = document.getElementById('accordion-container');
+  container.innerHTML = '';
+  const portIds = Object.keys(allPortfolios).sort((a, b) => {
+    const na = parseInt((allPortfolios[a].info?.name || a).match(/\d+/) || [0]);
+    const nb = parseInt((allPortfolios[b].info?.name || b).match(/\d+/) || [0]);
+    return na - nb;
+  });
+  if(!portIds.length) {
+    container.innerHTML = '<p class="text-center py-8" style="color:var(--text-secondary)">No portfolio data found in Firebase.</p>';
+    return;
+  }
+  portIds.forEach(id => {
+    const port = allPortfolios[id];
+    const info = port.info || {};
+    const stats = port.stats || {};
+    const s = calcPortStats(port);
+    const item = document.createElement('div');
+    item.className = 'acc-item';
+    item.id = 'acc-' + id;
+    const statusClass = info.status==='live'?'status-live':info.status==='error'?'status-error':'status-idle';
+    const profitColor = s.totalProfit>=0?'var(--neon-green)':'var(--neon-red)';
+    const fullName = info.name || id;
+    const nameParts = fullName.split('_');
+    const portLabel = nameParts[0] || fullName;   // Port1
+    const portCode  = nameParts[1] || fullName;   // 97039829
+    item.innerHTML = `
+      <div class="acc-header" onclick="toggleAcc('${id}')">
+        <svg class="acc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        <span class="port-id-badge">${portLabel}</span>
+        <span class="status-badge ${statusClass}">${(info.status||'idle').toUpperCase()}</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold" style="color:var(--text-primary)">${portCode}</div>
+          <div class="mono text-xs" style="color:var(--text-secondary)">${info.login||''} · ${info.server||''}</div>
+        </div>
+        <!-- Quick stats -->
+        <div class="hidden md:flex items-center gap-6 text-right">
+          <div>
+            <div class="card-label">Equity</div>
+            <div class="mono text-sm" style="color:var(--neon-cyan)">${fmt(stats.equity||0)}</div>
+          </div>
+          <div>
+            <div class="card-label">Profit</div>
+            <div class="mono text-sm" style="color:${profitColor}">${fmt(s.totalProfit)}</div>
+          </div>
+          <div>
+            <div class="card-label">Growth</div>
+            <div class="mono text-sm" style="color:${s.growth>=0?'var(--neon-green)':'var(--neon-red)'}">${fmtPct(s.growth)}</div>
+          </div>
+          <div>
+            <div class="card-label">Max DD (USD)</div>
+            <div class="mono text-sm" style="color:${(stats.maxDD||0)<5?'var(--neon-green)':(stats.maxDD||0)<15?'var(--neon-yellow)':(stats.maxDD||0)<25?'var(--neon-orange)':'var(--neon-red)'}">-${fmt((stats.equity||0)*(stats.maxDD||0)/100)}</div>
+          </div>
+          <div>
+            <div class="card-label">Max DD %</div>
+            <div class="mono text-sm" style="color:${(stats.maxDD||0)<5?'var(--neon-green)':(stats.maxDD||0)<15?'var(--neon-yellow)':(stats.maxDD||0)<25?'var(--neon-orange)':'var(--neon-red)'}">${fmtPct(stats.maxDD||0)}</div>
+          </div>
+        </div>
+        <!-- Copy Link -->
+        <button class="copy-link-btn ml-3" onclick="event.stopPropagation();copyLink('${id}')" style="position:relative;z-index:10">🔗 LINK</button>
+      </div>
+      <div class="acc-body" id="body-${id}">
+        <!-- Financial Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
+          ${statCard('Equity', fmt(stats.equity||0), 'cyan')}
+          ${statCard('Balance', fmt(stats.balance||0), 'cyan')}
+          ${statCard('Net Deposit', fmt(s.netDeposit), 'yellow')}
+          ${statCard('Total Profit', fmt(s.totalProfit), s.totalProfit>=0?'green':'red')}
+          ${statCard('Growth %', fmtPct(s.growth), s.growth>=0?'green':'red')}
+          ${statCard('Max DD %', fmtPct(stats.maxDD||0), 'red')}
+          ${statCard('Trades', s.tradeCount, 'cyan')}
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+          ${statCard('Win Rate', fmtPct(s.winRate), 'yellow')}
+          ${statCard('Profit Factor', s.pf, 'green')}
+          ${statCard('Wins', s.winCount, 'green')}
+          ${statCard('Losses', s.tradeCount-s.winCount, 'red')}
+        </div>
+        <!-- Chart -->
+        <div class="flex items-center justify-between mb-2" style="position:relative;z-index:10">
+          <div class="section-title text-xs" style="flex:1">EQUITY CURVE</div>
+          <button class="copy-link-btn" onclick="copyLink('${id}')" style="position:relative;z-index:10">🔗 COPY PUBLIC LINK</button>
+        </div>
+        <div class="chart-wrap" style="position:relative;z-index:1">
+          <div id="chart-${id}" style="min-height:220px"></div>
+        </div>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function statCard(label, value, color='cyan') {
+  const colorMap = {cyan:'var(--neon-cyan)',green:'var(--neon-green)',yellow:'var(--neon-yellow)',red:'var(--neon-red)'};
+  return `<div class="neon-card" style="padding:0.8rem">
+    <div class="card-label">${label}</div>
+    <div class="mono text-sm font-bold" style="color:${colorMap[color]||colorMap.cyan}">${value}</div>
+  </div>`;
+}
+
+function toggleAcc(id) {
+  const item = document.getElementById('acc-'+id);
+  const wasActive = item.classList.contains('active');
+  item.classList.toggle('active');
+  if(!wasActive) renderChart(id);
+}
+
+function expandAll() {
+  document.querySelectorAll('.acc-item').forEach(el => {
+    const id = el.id.replace('acc-','');
+    el.classList.add('active');
+    renderChart(id);
+  });
+}
+function collapseAll() {
+  document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
+}
+
+// Chart
+function renderChart(portId) {
+  const port = allPortfolios[portId];
+  if(!port) return;
+  const curve = Object.values(port.equity_curve || {});
+  if(!curve.length) return;
+  const chartEl = document.getElementById('chart-'+portId);
+  if(!chartEl || chartEl._chartDone) return;
+  chartEl._chartDone = true;
+  const series = curve.map(p=>({ x: p.time, y: p.equity }));
+  const isUp = series.length>=2 && series[series.length-1].y >= series[0].y;
+  const opts = {
+    series: [{ name: 'Equity', data: series }],
+    chart: {
+      type: 'area', height: 220,
+      background: 'transparent',
+      toolbar: { show: false },
+      sparkline: { enabled: false },
+      animations: { enabled: true, speed: 600 }
+    },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2, colors: [isUp?'#00ff88':'#ff3366'] },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0,
+        stops: [0,100],
+        colorStops: [{offset:0, color: isUp?'#00ff88':'#ff3366', opacity:0.3},{offset:100,color:'transparent',opacity:0}]
+      }
+    },
+    xaxis: { type: 'datetime', labels: { style: { colors: '#6a90b8', fontFamily: 'Share Tech Mono' } }, axisBorder:{show:false}, axisTicks:{show:false} },
+    yaxis: { labels: { style: { colors: '#6a90b8', fontFamily: 'Share Tech Mono' }, formatter: v=>'$'+v.toLocaleString() } },
+    grid: { borderColor: '#1a2a40', strokeDashArray: 4 },
+    tooltip: {
+      theme: 'dark',
+      x: { format: 'dd MMM yyyy' },
+      y: { formatter: v=>'$'+v.toLocaleString() }
+    },
+    theme: { mode: 'dark' }
+  };
+  if(chartInstances[portId]) { chartInstances[portId].destroy(); }
+  chartInstances[portId] = new ApexCharts(chartEl, opts);
+  chartInstances[portId].render();
+}
+
+// Section 4 — Grid
+function renderGrid(filtered=null) {
+  const ports = filtered || Object.entries(allPortfolios)
+    .sort(([,a],[,b]) => {
+      const na = parseInt((a.info?.name||'').match(/\d+/)||[0]);
+      const nb = parseInt((b.info?.name||'').match(/\d+/)||[0]);
+      return na - nb;
+    })
+    .map(([id, port]) => {
+    const s = calcPortStats(port);
+    return { id, name: port.info?.name||id, equity: port.stats?.equity||0,
+      balance: port.stats?.balance||0, netdeposit: s.netDeposit,
+      profit: s.totalProfit, growth: s.growth, winrate: s.winRate,
+      pf: s.pf, maxdd: port.stats?.maxDD||0, trades: s.tradeCount,
+      status: port.info?.status||'idle', deals: Object.values(port.deals||{}) };
+  });
+  gridData = ports;
+  filterGrid();
+}
+
+function filterGrid() {
+  const from = document.getElementById('date-from').value;
+  const to = document.getElementById('date-to').value;
+  const search = document.getElementById('grid-search').value.toLowerCase();
+  const fromMs = from ? new Date(from).getTime() : 0;
+  const toMs = to ? new Date(to).getTime()+86399999 : Date.now();
+
+  let rows = gridData.filter(p => {
+    if(search && !p.name.toLowerCase().includes(search) && !p.id.toLowerCase().includes(search)) return false;
+    return true;
+  }).map(p => {
+    // recalculate with date filter
+    if(from || to) {
+      let profit=0, wins=0, trades=0, grossW=0, grossL=0;
+      p.deals.forEach(d => {
+        if(d.type==='DEAL_TYPE_BALANCE') return;
+        if(d.time < fromMs || d.time > toMs) return;
+        const tp=(d.profit||0)+(d.swap||0)+(d.commission||0);
+        profit+=tp; trades++;
+        if(tp>0){wins++;grossW+=tp;}else{grossL+=Math.abs(tp);}
+      });
+      return { ...p, profit:Math.round(profit*100)/100,
+        winrate: trades?Math.round(wins/trades*10000)/100:0,
+        pf: grossL>0?Math.round(grossW/grossL*100)/100:(grossW>0?999:0),
+        trades, growth: p.netdeposit?Math.round(profit/p.netdeposit*10000)/100:0 };
+    }
+    return p;
+  });
+
+  // Sort
+  rows.sort((a,b)=>{
+    let av=a[sortField], bv=b[sortField];
+    if(typeof av==='string') return sortDir*av.localeCompare(bv);
+    return sortDir*(av-bv);
+  });
+
+  const tbody = document.getElementById('grid-body');
+  if(!rows.length) {
+    tbody.innerHTML='<tr><td colspan="11" class="text-center py-8" style="color:var(--text-secondary)">No data for selected range</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(p => {
+    const equityCol = `style="color:var(--neon-cyan)"`;
+    // Balance — white
+    const balanceCol = `style="color:#ffffff"`;
+    const netDepCol = `style="color:var(--neon-yellow)"`;
+    const profitCol = p.profit >= 0 ? `style="color:var(--neon-green)"` : `style="color:var(--neon-red)"`;
+    const profitSign = p.profit >= 0 ? '+' : '';
+    const growthColor = p.growth >= 20 ? '#00ff88' : p.growth >= 5 ? '#7dffb8' : p.growth >= 0 ? '#b0ffd6' : p.growth >= -10 ? '#ff8866' : '#ff3366';
+    // Win Rate — orange เสมอ
+    const wrCol = `style="color:var(--neon-orange)"`;
+    // Max DD % color scale
+    const ddColor = p.maxdd < 5 ? 'var(--neon-green)' : p.maxdd < 15 ? 'var(--neon-yellow)' : p.maxdd < 25 ? 'var(--neon-orange)' : 'var(--neon-red)';
+    // Max DD (USD) = equity × maxDD% แบบติดลบ ใช้สีเดียวกับ %
+    const maxddUsd = -(p.equity * (p.maxdd / 100));
+    const tradesCol = `style="color:var(--neon-purple)"`;
+
+    return `
+    <tr>
+      <td>
+        <div class="font-semibold" style="color:var(--text-primary)">${p.name}</div>
+        <div class="mono text-xs" style="color:var(--text-secondary)">${p.id}</div>
+      </td>
+      <td ${equityCol}>${fmt(p.equity)}</td>
+      <td ${balanceCol}>${fmt(p.balance)}</td>
+      <td ${netDepCol}>${fmt(p.netdeposit)}</td>
+      <td ${profitCol}>${profitSign+fmt(p.profit)}</td>
+      <td style="color:${growthColor}">${fmtPct(p.growth)}</td>
+      <td ${wrCol}>${fmtPct(p.winrate)}</td>
+      <td style="color:${ddColor}">${'-'+fmt(Math.abs(maxddUsd))}</td>
+      <td style="color:${ddColor}">${fmtPct(p.maxdd)}</td>
+      <td ${tradesCol}>${p.trades}</td>
+      <td>
+        <button class="copy-link-btn text-xs" onclick="copyLink('${p.id}')">🔗</button>
+      </td>
+    </tr>
+  `}).join('');
+}
+
+let sortDirs = {};
+function sortGrid(field) {
+  sortDirs[field] = (sortDirs[field]||1)*-1;
+  sortField = field; sortDir = sortDirs[field];
+  document.querySelectorAll('.data-table th').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+  });
+  const ths = document.querySelectorAll('.data-table th');
+  // mark correct th
+  filterGrid();
+}
+
+function setRange(r) {
+  const now = new Date();
+  const toDate = now.toISOString().split('T')[0];
+  let fromDate;
+  if(r==='today') fromDate=toDate;
+  else if(r==='yday') {
+    const y=new Date(now-86400000); const yd=y.toISOString().split('T')[0];
+    fromDate=yd; document.getElementById('date-from').value=yd;
+    document.getElementById('date-to').value=yd; filterGrid(); return;
+  }
+  else if(r==='7d') { const d=new Date(now-7*86400000); fromDate=d.toISOString().split('T')[0]; }
+  else if(r==='30d') { const d=new Date(now-30*86400000); fromDate=d.toISOString().split('T')[0]; }
+  else { fromDate=''; document.getElementById('date-to').value=''; }
+  document.getElementById('date-from').value = fromDate||'';
+  if(r!=='all') document.getElementById('date-to').value = toDate;
+  filterGrid();
+}
+
+// ═══════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════
+function fmt(n) {
+  return '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtPct(n) { return Number(n||0).toFixed(2)+'%'; }
+function setText(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function setBar(id, pct) { const el=document.getElementById(id); if(el) el.style.width=Math.min(pct,100)+'%'; }
+
+function copyLink(portId) {
+  const url = `${location.origin}${location.pathname}?port=${portId}`;
+  navigator.clipboard.writeText(url).then(()=>showToast(`✓ Link copied: ${portId}`));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function updateLastSync() {
+  setText('last-sync', new Date().toLocaleTimeString());
+}
+
+function refreshAll() {
+  if(db) { /* Firebase will auto-update via listeners */ }
+  else { loadDemoData(); }
+  showToast('↺ Data refreshed');
+}
+
+// Clock
+setInterval(()=>{ setText('clock', new Date().toLocaleTimeString()); }, 1000);
+// Velocity real-time update
+setInterval(()=>renderVelocity(), 5000);
+
+// ── Boot
+window.addEventListener('DOMContentLoaded', ()=>{
+  setText('clock', new Date().toLocaleTimeString());
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date-to').value = today;
+  const from30 = new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+  document.getElementById('date-from').value = from30;
+  initFirebase();
+
+  // Deep link — scroll to port
+  const params = new URLSearchParams(location.search);
+  const portParam = params.get('port');
+  if(portParam) {
+    setTimeout(()=>{
+      const el = document.getElementById('acc-'+portParam);
+      if(el) { el.scrollIntoView({behavior:'smooth'}); toggleAcc(portParam); }
+    }, 1200);
+  }
+});
+</script>
+</body>
+</html>
