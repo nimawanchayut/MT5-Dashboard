@@ -848,6 +848,23 @@ function renderAccordion() {
     const floatVal = (stats.equity||0) - (stats.balance||0);
     const floatColor = floatVal >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
     const floatSign = floatVal >= 0 ? '+' : '';
+
+    // Profit วันนี้
+    const midnight = new Date(); midnight.setHours(0,0,0,0);
+    let todayProfit = 0;
+    Object.values(port.deals||{}).forEach(d => {
+      if(d.type !== 'DEAL_TYPE_BALANCE' && d.time >= midnight.getTime()) {
+        todayProfit += (d.profit||0) + (d.swap||0) + (d.commission||0);
+      }
+    });
+    const todayColor = todayProfit >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
+    const todaySign = todayProfit >= 0 ? '+' : '';
+
+    // DD วันนี้ = float ติดลบที่แย่สุดของวัน (EA ส่งมาใน stats.todayMaxDD)
+    const todayMaxDD = stats.todayMaxDD || 0;  // ค่าติดลบ เช่น -150.50
+    const todayMaxDDpct = (stats.balance||0) > 0 ? (Math.abs(todayMaxDD) / (stats.balance||0)) * 100 : 0;
+    const ddNowColor = todayMaxDD === 0 ? 'var(--neon-green)' : todayMaxDDpct < 5 ? 'var(--neon-yellow)' : todayMaxDDpct < 15 ? 'var(--neon-orange)' : 'var(--neon-red)';
+
     item.innerHTML = `
       <div class="acc-header" onclick="toggleAcc('${id}')">
         <svg class="acc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -864,12 +881,16 @@ function renderAccordion() {
             <div class="mono text-sm" style="color:var(--neon-cyan)">${fmt(stats.equity||0)}</div>
           </div>
           <div>
-            <div class="card-label">Profit</div>
-            <div class="mono text-sm" style="color:${profitColor}">${fmt(s.totalProfit)}</div>
+            <div class="card-label">Today Profit</div>
+            <div class="mono text-sm" style="color:${todayColor}">${todaySign+fmt(todayProfit)}</div>
           </div>
           <div>
             <div class="card-label">Float</div>
             <div class="mono text-sm" style="color:${floatColor}">${floatSign+fmt(floatVal)}</div>
+          </div>
+          <div>
+            <div class="card-label">DD Today</div>
+            <div class="mono text-sm" style="color:${ddNowColor}">${todayMaxDD === 0 ? '—' : fmt(todayMaxDD)+' ('+fmtPct(todayMaxDDpct)+')'}</div>
           </div>
           <div>
             <div class="card-label">Max DD (USD)</div>
