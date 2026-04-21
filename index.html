@@ -735,12 +735,13 @@ function calcPortStats(port) {
   };
 }
 
-// ยืนยันแล้วจาก console: DEAL_TIME เป็น UTC+0, ไทย = UTC+7 → offset = 7 ชม
+// MT5 DEAL_TIME = UTC+0, Date.now() = UTC+0 → เทียบตรงๆ ได้เลย
+// offset ใช้เฉพาะตอนแปลง local date (จากปฏิทิน) → UTC สำหรับ filterGrid
 const MT5_SERVER_OFFSET_MS = 7 * 3600000;
 
-// Velocity — profit in last N ms
+// Velocity — profit in last N ms (UTC vs UTC ตรงๆ)
 function calcVelocity(ms) {
-  const cutoff = Date.now() - ms - MT5_SERVER_OFFSET_MS;
+  const cutoff = Date.now() - ms;
   let profit = 0, count = 0;
   Object.values(allPortfolios).forEach(port => {
     Object.values(port.deals||{}).forEach(d => {
@@ -754,12 +755,14 @@ function calcVelocity(ms) {
 }
 
 function calcToday() {
-  const midnight = new Date(); midnight.setHours(0,0,0,0);
-  const cutoff = midnight.getTime() - MT5_SERVER_OFFSET_MS;
+  // เที่ยงคืนไทย (local) แปลงเป็น UTC+0 เพื่อเทียบกับ d.time
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const cutoffUTC = midnight.getTime() - MT5_SERVER_OFFSET_MS;
   let profit = 0, count = 0;
   Object.values(allPortfolios).forEach(port => {
     Object.values(port.deals||{}).forEach(d => {
-      if(d.type !== 'DEAL_TYPE_BALANCE' && d.time >= cutoff) {
+      if(d.type !== 'DEAL_TYPE_BALANCE' && d.time >= cutoffUTC) {
         profit += (d.profit||0)+(d.swap||0)+(d.commission||0);
         count++;
       }
@@ -874,12 +877,9 @@ function renderAccordion() {
     const equity  = stats.equity  || 0;
     const balance = stats.balance || 0;
 
-    // ── 2. Today Profit — เฉพาะ TRADE ที่ปิดวันนี้เท่านั้น
-    //    MT5 server ช้ากว่าไทย 4 ชม (server=UTC+3, ไทย=UTC+7)
-    //    deals timestamp จึงช้ากว่าเวลาจริง 4 ชม
-    //    ต้องเลื่อน todayStart ย้อนกลับ 4 ชม เพื่อ match กับ timestamp ของ deals
+    // ── 2. Today Profit — deals เป็น UTC+0, เที่ยงคืนไทยต้องแปลงเป็น UTC+0 ก่อน
     const SERVER_OFFSET_MS  = MT5_SERVER_OFFSET_MS;
-    const todayStartServer  = todayStart - SERVER_OFFSET_MS;
+    const todayStartServer  = todayStart - SERVER_OFFSET_MS; // เที่ยงคืนไทย → UTC+0
 
     let todayProfit = 0;
     deals.forEach(d => {
